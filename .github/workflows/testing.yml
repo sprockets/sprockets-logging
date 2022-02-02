@@ -1,36 +1,44 @@
-# This is a basic workflow to help you get started with Actions
-
-name: CI
-
-# Controls when the workflow will run
+name: Testing
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ main ]
+    branches: ["*"]
+    paths-ignore:
+      - 'docs/**'
+      - 'setup.*'
+      - '*.md'
+      - '*.rst'
+    tags-ignore: ["*"]
   pull_request:
-    branches: [ main ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  test:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    timeout-minutes: 3
+    strategy:
+      matrix:
+        python: ["3.7", "3.8", "3.9", "3.10"]
+    container:
+      image: python:${{ matrix.python }}-alpine
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Install testing dependencies
+        run: pip3 install -e '.[testing]'
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+      - name: Run flake8 tests
+        run: flake8
+
+      - name: Run tests
+        run: coverage run
+
+      - name: Output coverage
+        run: coverage report && coverage xml
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v2
+        if: github.event_name == 'push' && github.repository == 'sprockets/sprockets-logging'
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          file: coverage.xml
+          flags: unittests
+          fail_ci_if_error: true
