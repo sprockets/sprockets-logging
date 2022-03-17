@@ -1,0 +1,7 @@
+global-exclude *.pyc
+global-exclude __pycache__
+graft ci
+graft docs
+graft tests
+include CHANGELOG.md
+include README.md
